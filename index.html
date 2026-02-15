@@ -17,7 +17,7 @@ button { padding:10px 20px; margin:10px; border:none; cursor:pointer; }
 <h1>📘 単語帳アプリ</h1>
 
 <div class="card">
-  <h2 id="questionArea">読み込み中...</h2>
+  <h2 id="questionArea">問題がありません</h2>
   <div id="answerArea" style="margin:20px;font-weight:bold;"></div>
 
   <button onclick="showAnswer()">答えを見る</button>
@@ -27,6 +27,9 @@ button { padding:10px 20px; margin:10px; border:none; cursor:pointer; }
     <button class="incorrect" onclick="record('incorrect')">不正解</button>
     <button class="pass" onclick="record('pass')">パス</button>
   </div>
+
+  <hr>
+  <button onclick="loadJSON()">JSON読み取り</button>
 </div>
 
 <br>
@@ -34,46 +37,55 @@ button { padding:10px 20px; margin:10px; border:none; cursor:pointer; }
 <button onclick="location.href='list.html'">問題一覧</button>
 
 <script>
-let words = [];
+let words = JSON.parse(localStorage.getItem("words")) || [];
 let current = null;
 
-/* =========================
-   JSON初期読み込み処理
-========================= */
-async function loadInitialData() {
-  let existing = JSON.parse(localStorage.getItem("words"));
-
-  if (!existing || existing.length === 0) {
-    const response = await fetch("questions.json");
-    const data = await response.json();
-
-    const formatted = data.map(item => ({
-      id: Date.now() + Math.random(),
-      question: item.question,
-      answer: item.answer,
-      correct: 0,
-      incorrect: 0,
-      pass: 0
-    }));
-
-    localStorage.setItem("words", JSON.stringify(formatted));
-    words = formatted;
-  } else {
-    words = existing;
-  }
-
-  loadRandom();
+/* ハッシュ生成 */
+async function generateHash(text) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
 }
 
-/* =========================
-   ランダム出題
-========================= */
+/* JSON読み込み（重複回避） */
+async function loadJSON() {
+  const response = await fetch("questions.json");
+  const jsonData = await response.json();
+
+  let existing = JSON.parse(localStorage.getItem("words")) || [];
+  const existingHashes = new Set(existing.map(item => item.hash));
+
+  for (const item of jsonData) {
+    const hash = await generateHash(item.question + "||" + item.answer);
+
+    if (!existingHashes.has(hash)) {
+      existing.push({
+        id: Date.now() + Math.random(),
+        question: item.question,
+        answer: item.answer,
+        correct: 0,
+        incorrect: 0,
+        pass: 0,
+        hash: hash
+      });
+      existingHashes.add(hash);
+    }
+  }
+
+  localStorage.setItem("words", JSON.stringify(existing));
+  words = existing;
+
+  alert("JSON読み込み完了（重複は除外）");
+}
+
+/* ランダム出題 */
 function loadRandom() {
   if (words.length === 0) {
     document.getElementById("questionArea").textContent = "問題がありません";
     return;
   }
-
   current = words[Math.floor(Math.random() * words.length)];
   document.getElementById("questionArea").textContent = current.question;
   document.getElementById("answerArea").textContent = "";
@@ -88,19 +100,14 @@ function showAnswer() {
 
 function record(type) {
   let data = JSON.parse(localStorage.getItem("words")) || [];
-  const index = data.findIndex(item => item.id === current.id);
-
-  if (index !== -1) {
-    data[index][type]++;
-    localStorage.setItem("words", JSON.stringify(data));
-  }
-
+  const index = data.findIndex(item => item.hash === current.hash);
+  if (index !== -1) data[index][type]++;
+  localStorage.setItem("words", JSON.stringify(data));
   words = data;
   loadRandom();
 }
 
-loadInitialData();
+loadRandom();
 </script>
-
 </body>
 </html>
