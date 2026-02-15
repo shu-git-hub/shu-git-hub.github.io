@@ -3,55 +3,49 @@
 <head>
 <meta charset="UTF-8">
 <title>問題登録</title>
-<style>
-body { font-family:sans-serif; padding:30px; background:#f4f6f9; }
-.container { max-width:500px; margin:auto; background:white; padding:20px; border-radius:10px; }
-input, button { width:100%; padding:10px; margin-top:10px; }
-button { background:#4CAF50; color:white; border:none; cursor:pointer; }
-button:hover { background:#45a049; }
-</style>
 </head>
 <body>
 
-<div class="container">
 <h2>📘 問題登録</h2>
-
-<input type="text" id="question" placeholder="問題を入力">
-<input type="text" id="answer" placeholder="答えを入力">
+<input type="text" id="question" placeholder="問題">
+<input type="text" id="answer" placeholder="答え">
 <button onclick="saveQuestion()">保存</button>
-<button onclick="location.href='index.html'">メインへ</button>
-
-</div>
+<button onclick="location.href='index.html'">戻る</button>
 
 <script>
-function saveQuestion() {
+async function generateHash(text) {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function saveQuestion() {
   const question = document.getElementById("question").value.trim();
   const answer = document.getElementById("answer").value.trim();
+  if (!question || !answer) return alert("入力してください");
 
-  if (!question || !answer) {
-    alert("両方入力してください");
-    return;
-  }
+  const hash = await generateHash(question + "||" + answer);
 
   let data = JSON.parse(localStorage.getItem("words")) || [];
+  if (data.some(item => item.hash === hash)) {
+    return alert("同じ問題がすでに存在します");
+  }
 
-  const newItem = {
+  data.push({
     id: Date.now(),
     question,
     answer,
     correct: 0,
     incorrect: 0,
-    pass: 0
-  };
+    pass: 0,
+    hash
+  });
 
-  data.push(newItem);
   localStorage.setItem("words", JSON.stringify(data));
-
-  alert("保存しました！");
-  document.getElementById("question").value = "";
-  document.getElementById("answer").value = "";
+  alert("保存しました");
 }
 </script>
-
 </body>
 </html>
