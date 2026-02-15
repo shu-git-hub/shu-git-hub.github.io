@@ -51,34 +51,51 @@ async function generateHash(text) {
 
 /* JSON読み込み（重複回避） */
 async function loadJSON() {
-  const response = await fetch("questions.json");
-  const jsonData = await response.json();
+  try {
+    console.log("JSON読み込み開始");
 
-  let existing = JSON.parse(localStorage.getItem("words")) || [];
-  const existingHashes = new Set(existing.map(item => item.hash));
+    const response = await fetch("./questions.json");
+    console.log("fetch status:", response.status);
 
-  for (const item of jsonData) {
-    const hash = await generateHash(item.question + "||" + item.answer);
-
-    if (!existingHashes.has(hash)) {
-      existing.push({
-        id: Date.now() + Math.random(),
-        question: item.question,
-        answer: item.answer,
-        correct: 0,
-        incorrect: 0,
-        pass: 0,
-        hash: hash
-      });
-      existingHashes.add(hash);
+    if (!response.ok) {
+      throw new Error("JSONが見つかりません");
     }
+
+    const jsonData = await response.json();
+    console.log("取得データ:", jsonData);
+
+    let existing = JSON.parse(localStorage.getItem("words")) || [];
+    const existingHashes = new Set(existing.map(item => item.hash));
+
+    for (const item of jsonData) {
+      const hash = await generateHash(item.question + "||" + item.answer);
+
+      if (!existingHashes.has(hash)) {
+        existing.push({
+          id: Date.now() + Math.random(),
+          question: item.question,
+          answer: item.answer,
+          correct: 0,
+          incorrect: 0,
+          pass: 0,
+          hash: hash
+        });
+        existingHashes.add(hash);
+      }
+    }
+
+    localStorage.setItem("words", JSON.stringify(existing));
+    words = existing;
+
+    alert("JSON読み込み完了");
+    loadRandom();
+
+  } catch (error) {
+    console.error("エラー発生:", error);
+    alert("JSON読み込み失敗。コンソールを確認してください。");
   }
-
-  localStorage.setItem("words", JSON.stringify(existing));
-  words = existing;
-
-  alert("JSON読み込み完了（重複は除外）");
 }
+
 
 /* ランダム出題 */
 function loadRandom() {
