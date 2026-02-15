@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>単語帳アプリ</title>
+<style>
+body { font-family:sans-serif; text-align:center; padding:30px; background:#f4f6f9; }
+.card { background:white; padding:30px; border-radius:10px; max-width:500px; margin:auto; }
+button { padding:10px 20px; margin:10px; border:none; cursor:pointer; }
+.correct { background:#4CAF50; color:white; }
+.incorrect { background:#f44336; color:white; }
+.pass { background:#777; color:white; }
+</style>
+</head>
+<body>
+
+<h1>📘 単語帳アプリ</h1>
+
+<div class="card">
+  <h2 id="questionArea">問題がありません</h2>
+  <div id="answerArea" style="margin:20px;font-weight:bold;"></div>
+
+  <button onclick="showAnswer()">答えを見る</button>
+
+  <div id="resultButtons" style="display:none;">
+    <button class="correct" onclick="record('correct')">正解</button>
+    <button class="incorrect" onclick="record('incorrect')">不正解</button>
+    <button class="pass" onclick="record('pass')">パス</button>
+  </div>
+</div>
+
+<br>
+<button onclick="location.href='register.html'">問題登録</button>
+<button onclick="location.href='list.html'">問題一覧</button>
+
+<script>
+let words = JSON.parse(localStorage.getItem("words")) || [];
+let current = null;
+
+function loadRandom() {
+  if (words.length === 0) {
+    document.getElementById("questionArea").textContent = "問題がありません";
+    return;
+  }
+
+  current = words[Math.floor(Math.random() * words.length)];
+  document.getElementById("questionArea").textContent = current.question;
+  document.getElementById("answerArea").textContent = "";
+  document.getElementById("resultButtons").style.display = "none";
+}
+
+function showAnswer() {
+  if (!current) return;
+  document.getElementById("answerArea").textContent = "答え: " + current.answer;
+  document.getElementById("resultButtons").style.display = "block";
+}
+
+function record(type) {
+  let data = JSON.parse(localStorage.getItem("words")) || [];
+  const index = data.findIndex(item => item.id === current.id);
+
+  if (index !== -1) {
+    data[index][type]++;
+    localStorage.setItem("words", JSON.stringify(data));
+  }
+
+  loadRandom();
+}
+
+loadRandom();
+</script>
+
+</body>
+</html>
