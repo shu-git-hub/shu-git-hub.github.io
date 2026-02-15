@@ -2,19 +2,20 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<title>単語帳アプリ</title>
+<title>単語帳アプリ（画像対応版）</title>
 <style>
 body { font-family:sans-serif; text-align:center; padding:30px; background:#f4f6f9; }
-.card { background:white; padding:30px; border-radius:10px; max-width:500px; margin:auto; }
+.card { background:white; padding:30px; border-radius:10px; max-width:600px; margin:auto; }
 button { padding:10px 20px; margin:10px; border:none; cursor:pointer; }
 .correct { background:#4CAF50; color:white; }
 .incorrect { background:#f44336; color:white; }
 .pass { background:#777; color:white; }
+img { height:60px; vertical-align:middle; margin:0 5px; }
 </style>
 </head>
 <body>
 
-<h1>📘 単語帳アプリ</h1>
+<h1>📘 単語帳アプリ（画像対応版）</h1>
 
 <div class="card">
   <h2 id="questionArea">問題がありません</h2>
@@ -38,47 +39,65 @@ button { padding:10px 20px; margin:10px; border:none; cursor:pointer; }
 
 <script>
 let words = JSON.parse(localStorage.getItem("words")) || [];
+let imageMap = {};  // ID/名前 → URL
 let current = null;
 
-/* ハッシュ生成 */
+/* ========================
+   ハッシュ生成関数
+======================== */
 async function generateHash(text) {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);
   const hashBuffer = await crypto.subtle.digest("SHA-256", data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+  return hashArray.map(b => b.toString(16).padStart(2,"0")).join("");
 }
 
-/* JSON読み込み（重複回避） */
+/* ========================
+   画像JSON読み込み
+======================== */
+async function loadImages() {
+  const resp = await fetch("images.json");
+  const imgs = await resp.json();
+  imgs.forEach(item => {
+    imageMap[item.id] = item.url;
+    imageMap[item.name] = item.url;
+  });
+}
+
+/* ========================
+   テキスト内ID/名前を画像に置換
+======================== */
+function renderTextWithImages(text) {
+  return text.replace(/\b(\w+_\w+|u\d+|i\d+)\b/g, (match) => {
+    if (imageMap[match]) return `<img src="${imageMap[match]}" alt="${match}">`;
+    return match;
+  });
+}
+
+/* ========================
+   JSON問題読み込み（重複回避）
+======================== */
 async function loadJSON() {
   try {
-    console.log("JSON読み込み開始");
-
-    const response = await fetch("./questions.json");
-    console.log("fetch status:", response.status);
-
-    if (!response.ok) {
-      throw new Error("JSONが見つかりません");
-    }
-
+    await loadImages(); // 画像マップ先に読み込む
+    const response = await fetch("questions.json");
     const jsonData = await response.json();
-    console.log("取得データ:", jsonData);
 
     let existing = JSON.parse(localStorage.getItem("words")) || [];
     const existingHashes = new Set(existing.map(item => item.hash));
 
     for (const item of jsonData) {
       const hash = await generateHash(item.question + "||" + item.answer);
-
       if (!existingHashes.has(hash)) {
-        existing.push({
+        existing.push({ 
           id: Date.now() + Math.random(),
           question: item.question,
           answer: item.answer,
           correct: 0,
           incorrect: 0,
           pass: 0,
-          hash: hash
+          hash
         });
         existingHashes.add(hash);
       }
@@ -86,32 +105,32 @@ async function loadJSON() {
 
     localStorage.setItem("words", JSON.stringify(existing));
     words = existing;
-
-    alert("JSON読み込み完了");
+    alert("JSON読み込み完了（画像対応）");
     loadRandom();
-
-  } catch (error) {
-    console.error("エラー発生:", error);
-    alert("JSON読み込み失敗。コンソールを確認してください。");
+  } catch (err) {
+    console.error(err);
+    alert("JSON読み込み失敗");
   }
 }
 
-
-/* ランダム出題 */
+/* ========================
+   ランダム出題
+======================== */
 function loadRandom() {
   if (words.length === 0) {
     document.getElementById("questionArea").textContent = "問題がありません";
+    document.getElementById("answerArea").innerHTML = "";
     return;
   }
   current = words[Math.floor(Math.random() * words.length)];
-  document.getElementById("questionArea").textContent = current.question;
-  document.getElementById("answerArea").textContent = "";
+  document.getElementById("questionArea").innerHTML = renderTextWithImages(current.question);
+  document.getElementById("answerArea").innerHTML = "";
   document.getElementById("resultButtons").style.display = "none";
 }
 
 function showAnswer() {
   if (!current) return;
-  document.getElementById("answerArea").textContent = "答え: " + current.answer;
+  document.getElementById("answerArea").innerHTML = renderTextWithImages(current.answer);
   document.getElementById("resultButtons").style.display = "block";
 }
 
@@ -124,6 +143,9 @@ function record(type) {
   loadRandom();
 }
 
+/* ========================
+   初期表示
+======================== */
 loadRandom();
 </script>
 </body>
