@@ -17,7 +17,7 @@ button { padding:10px 20px; margin:10px; border:none; cursor:pointer; }
 <h1>📘 単語帳アプリ</h1>
 
 <div class="card">
-  <h2 id="questionArea">問題がありません</h2>
+  <h2 id="questionArea">読み込み中...</h2>
   <div id="answerArea" style="margin:20px;font-weight:bold;"></div>
 
   <button onclick="showAnswer()">答えを見る</button>
@@ -34,9 +34,40 @@ button { padding:10px 20px; margin:10px; border:none; cursor:pointer; }
 <button onclick="location.href='list.html'">問題一覧</button>
 
 <script>
-let words = JSON.parse(localStorage.getItem("words")) || [];
+let words = [];
 let current = null;
 
+/* =========================
+   JSON初期読み込み処理
+========================= */
+async function loadInitialData() {
+  let existing = JSON.parse(localStorage.getItem("words"));
+
+  if (!existing || existing.length === 0) {
+    const response = await fetch("questions.json");
+    const data = await response.json();
+
+    const formatted = data.map(item => ({
+      id: Date.now() + Math.random(),
+      question: item.question,
+      answer: item.answer,
+      correct: 0,
+      incorrect: 0,
+      pass: 0
+    }));
+
+    localStorage.setItem("words", JSON.stringify(formatted));
+    words = formatted;
+  } else {
+    words = existing;
+  }
+
+  loadRandom();
+}
+
+/* =========================
+   ランダム出題
+========================= */
 function loadRandom() {
   if (words.length === 0) {
     document.getElementById("questionArea").textContent = "問題がありません";
@@ -64,10 +95,11 @@ function record(type) {
     localStorage.setItem("words", JSON.stringify(data));
   }
 
+  words = data;
   loadRandom();
 }
 
-loadRandom();
+loadInitialData();
 </script>
 
 </body>
