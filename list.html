@@ -11,6 +11,10 @@ button { margin: 0 2px; }
 </head>
 <body>
 <h1>問題一覧</h1>
+
+<!-- JSON読み込みボタン -->
+<button id="loadJsonBtn">JSON読み取り</button>
+
 <table id="questionTable">
   <thead>
     <tr>
@@ -62,21 +66,4 @@ function editQuestion(index) {
 
   q.question = newQuestion;
   q.answer = newAnswer;
-  localStorage.setItem("questions", JSON.stringify(questions));
-  renderQuestions();
-}
-
-// 問題削除
-function deleteQuestion(index) {
-  if(!confirm("この問題を削除しますか？")) return;
-  const questions = getQuestions();
-  questions.splice(index, 1);
-  localStorage.setItem("questions", JSON.stringify(questions));
-  renderQuestions();
-}
-
-// 初期表示
-renderQuestions();
-</script>
-</body>
-</html>
+  localStorage.setItem("questions", JS
